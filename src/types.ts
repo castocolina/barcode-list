@@ -33,3 +33,9 @@ export interface ScanEvent {
   barcode: string;
   scanId: number;
 }
+
+export interface ZoomRange {
+  min: number;
+  max: number;
+  step: number;
+}

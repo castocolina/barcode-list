@@ -1,16 +1,42 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/library';
-import type { ScanEvent } from '../types';
+import type { ScanEvent, ZoomRange } from '../types';
+
+// iOS 17+ / Chrome extensions to the standard MediaTrack types
+interface ExtendedCapabilities extends MediaTrackCapabilities {
+  zoom?: { min: number; max: number; step: number };
+}
+interface ExtendedConstraintSet extends MediaTrackConstraintSet {
+  zoom?: number;
+}
+
+const ZOOM_KEY = 'bl_zoom';
+// User-visible step per button press; respects native step if coarser
+const BUTTON_STEP = 0.5;
 
 export function useScanner() {
   const [lastScan, setLastScan] = useState<ScanEvent | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [zoomRange, setZoomRange] = useState<ZoomRange | null>(null);
   const recentScans = useRef<Map<string, number>>(new Map());
   const scanCounterRef = useRef(0);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
 
   const attachVideo = useCallback((el: HTMLVideoElement | null) => {
     setVideoEl(el);
+  }, []);
+
+  const setZoom = useCallback(async (value: number) => {
+    const track = trackRef.current;
+    if (!track) return;
+    // Optimistic update so the button feels instant
+    setZoomLevel(value);
+    localStorage.setItem(ZOOM_KEY, String(value));
+    try {
+      await track.applyConstraints({ advanced: [{ zoom: value } as ExtendedConstraintSet] });
+    } catch { /* ignore — device may not support this exact value */ }
   }, []);
 
   useEffect(() => {
@@ -29,6 +55,33 @@ export function useScanner() {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
+
+        // Zoom capability (iOS 17+, some Android)
+        const track = (stream?.getVideoTracks?.() ?? [])[0] ?? null;
+        trackRef.current = track;
+        if (track) {
+          const caps = track.getCapabilities() as ExtendedCapabilities;
+          if (caps.zoom && typeof caps.zoom.min === 'number') {
+            const range: ZoomRange = {
+              min: caps.zoom.min,
+              max: caps.zoom.max,
+              step: caps.zoom.step ?? 0.01,
+            };
+            setZoomRange(range);
+            const saved = parseFloat(localStorage.getItem(ZOOM_KEY) ?? '');
+            const initial =
+              !isNaN(saved) && saved >= range.min && saved <= range.max
+                ? saved
+                : range.min;
+            if (initial !== range.min) {
+              await track.applyConstraints({
+                advanced: [{ zoom: initial } as ExtendedConstraintSet],
+              });
+            }
+            setZoomLevel(initial);
+          }
+        }
+
         videoEl.srcObject = stream;
         // play() is best-effort: jsdom returns undefined (not a Promise),
         // and some browsers may reject it. ZXing drives the stream directly
@@ -68,10 +121,11 @@ export function useScanner() {
 
     return () => {
       cancelled = true;
+      trackRef.current = null;
       reader.reset();
       stream?.getTracks().forEach((t) => t.stop());
     };
   }, [videoEl]);
 
-  return { lastScan, cameraError, attachVideo };
+  return { lastScan, cameraError, attachVideo, zoomLevel, zoomRange, setZoom };
 }

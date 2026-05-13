@@ -19,7 +19,7 @@ const styles: Record<string, SxProps<Theme>> = {
 };
 
 export function App() {
-  const { lastScan, cameraError, attachVideo } = useScanner();
+  const { lastScan, cameraError, attachVideo, zoomLevel, zoomRange, setZoom } = useScanner();
   const { items, addItem, clearItems, editItemName } = useProductList();
   const [toastData, setToastData] = useState<ToastData | null>(null);
   const [scanningBarcode, setScanningBarcode] = useState<string | null>(null);
@@ -80,6 +80,9 @@ export function App() {
             cameraError={cameraError}
             attachVideo={attachVideo}
             scanningBarcode={scanningBarcode}
+            zoomLevel={zoomLevel}
+            zoomRange={zoomRange}
+            setZoom={setZoom}
           />
         </Paper>
 
