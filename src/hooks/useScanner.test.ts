@@ -86,3 +86,41 @@ describe('useScanner — deduplication', () => {
     expect(result.current.lastScan?.scanId).toBeGreaterThan(firstScanId!);
   });
 });
+
+describe('useScanner — camera error handling', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.mocked(BrowserMultiFormatReader).mockImplementation(() => ({
+      decodeFromStream: vi.fn(),
+      reset: vi.fn(),
+    }));
+  });
+
+  function makeGetUserMediaReject(message: string) {
+    const err = new Error(message);
+    err.name = message.includes('NotAllowed') ? 'NotAllowedError' : 'Error';
+    vi.spyOn(navigator.mediaDevices, 'getUserMedia').mockRejectedValueOnce(err);
+  }
+
+  it('sets cameraError when camera permission is denied', async () => {
+    makeGetUserMediaReject('NotAllowed: permission denied');
+    const { result } = renderHook(() => useScanner());
+    const fakeVideo = document.createElement('video');
+    await act(async () => {
+      result.current.attachVideo(fakeVideo);
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    expect(result.current.cameraError).toContain('Permiso de cámara denegado');
+  });
+
+  it('sets cameraError with generic message for unknown errors', async () => {
+    makeGetUserMediaReject('SomeUnknownError');
+    const { result } = renderHook(() => useScanner());
+    const fakeVideo = document.createElement('video');
+    await act(async () => {
+      result.current.attachVideo(fakeVideo);
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    expect(result.current.cameraError).toContain('Error de cámara');
+  });
+});

@@ -18,12 +18,17 @@ export function useScanner() {
 
     const reader = new BrowserMultiFormatReader();
     let stream: MediaStream | null = null;
+    let cancelled = false;
 
     (async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },
         });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
         videoEl.srcObject = stream;
         // play() is best-effort: jsdom returns undefined (not a Promise),
         // and some browsers may reject it. ZXing drives the stream directly
@@ -45,9 +50,10 @@ export function useScanner() {
           setLastScan({ barcode, scanId: ++scanCounterRef.current });
         });
       } catch (err: unknown) {
+        if (cancelled) return;
         const msg = err instanceof Error ? err.message : String(err);
         let errorMsg: string;
-        if (location.protocol !== 'https:') {
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
           errorMsg = 'La cámara requiere HTTPS. Accedé desde la URL segura de la app.';
         } else if (/NotAllowed|Permission/i.test(msg)) {
           errorMsg = 'Permiso de cámara denegado. Habilitalo en Ajustes.';
@@ -61,6 +67,7 @@ export function useScanner() {
     })();
 
     return () => {
+      cancelled = true;
       reader.reset();
       stream?.getTracks().forEach((t) => t.stop());
     };
