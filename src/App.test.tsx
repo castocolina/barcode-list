@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ThemeProvider } from '@mui/material';
 import { theme } from './theme';
+import type { ScanResult } from './types';
 
 // Mock hooks and services so no camera or network access occurs
 vi.mock('./hooks/useScanner', () => ({
@@ -51,7 +52,7 @@ describe('App.tsx orchestration', () => {
   });
 
   it('calls beep before lookup resolves, then addItem on found result', async () => {
-    let resolveLookup!: (v: unknown) => void;
+    let resolveLookup!: (value: ScanResult | PromiseLike<ScanResult>) => void;
     mockLookup.mockReturnValue(new Promise((res) => { resolveLookup = res; }));
     mockUseScanner.mockReturnValue({ lastScan: { barcode: '12345', scanId: 1 }, cameraError: null, attachVideo: vi.fn() });
 

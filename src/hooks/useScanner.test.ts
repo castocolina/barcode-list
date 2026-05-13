@@ -6,7 +6,7 @@ vi.mock('@zxing/library', () => ({
   BrowserMultiFormatReader: vi.fn().mockImplementation(() => ({
     decodeFromStream: vi.fn(),
     reset: vi.fn(),
-  })),
+  }) as any),
 }));
 
 // Mock navigator.mediaDevices to avoid getUserMedia in jsdom
@@ -33,7 +33,7 @@ describe('useScanner — deduplication', () => {
     vi.mocked(BrowserMultiFormatReader).mockImplementation(() => ({
       decodeFromStream: vi.fn(),
       reset: vi.fn(),
-    }));
+    }) as any);
   });
 
   function getScanCallback(): (result: { getText: () => string } | null) => void {
@@ -93,7 +93,7 @@ describe('useScanner — camera error handling', () => {
     vi.mocked(BrowserMultiFormatReader).mockImplementation(() => ({
       decodeFromStream: vi.fn(),
       reset: vi.fn(),
-    }));
+    }) as any);
   });
 
   function makeGetUserMediaReject(message: string) {
