@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ScanItem } from '../types';
 import * as storageService from '../services/storageService';
+import { setOverride } from '../services/descriptionCache';
 
 type AddItemInput = Pick<ScanItem, 'barcode' | 'name'> & Partial<Pick<ScanItem, 'brand' | 'source'>>;
 
@@ -45,5 +46,14 @@ export function useProductList() {
     setItems([]);
   }, []);
 
-  return { items, addItem, clearItems };
+  const editItemName = useCallback((barcode: string, name: string) => {
+    setItems((prev) => {
+      const next = prev.map((i) => i.barcode === barcode ? { ...i, name } : i);
+      storageService.writeItems(next);
+      return next;
+    });
+    setOverride(barcode, name);
+  }, []);
+
+  return { items, addItem, clearItems, editItemName };
 }

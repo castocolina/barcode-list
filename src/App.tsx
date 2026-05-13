@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { AppBar, Box, Container, Paper, Toolbar, Typography } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material';
 import { ScannerView } from './components/ScannerView';
@@ -9,6 +9,7 @@ import { useScanner } from './hooks/useScanner';
 import { useProductList } from './hooks/useProductList';
 import { lookup } from './services/barcodeService';
 import { beep } from './services/soundService';
+import { getOverride } from './services/descriptionCache';
 import type { ToastData } from './types';
 
 const styles: Record<string, SxProps<Theme>> = {
@@ -19,32 +20,46 @@ const styles: Record<string, SxProps<Theme>> = {
 
 export function App() {
   const { lastScan, cameraError, attachVideo } = useScanner();
-  const { items, addItem, clearItems } = useProductList();
+  const { items, addItem, clearItems, editItemName } = useProductList();
   const [toastData, setToastData] = useState<ToastData | null>(null);
+  const [scanningBarcode, setScanningBarcode] = useState<string | null>(null);
+  // Generation counter: incremented on clear so in-flight lookups discard their results
+  const genRef = useRef(0);
 
   useEffect(() => {
     if (!lastScan) return;
+    const gen = ++genRef.current;
     const { barcode } = lastScan;
-    let cancelled = false;
 
-    // Beep immediately — before async lookup (per spec §3)
+    setScanningBarcode(barcode);
     beep();
 
     lookup(barcode).then((result) => {
-      if (cancelled) return;
+      if (genRef.current !== gen) return; // cleared or superseded
+      setScanningBarcode(null);
+
+      const override = getOverride(barcode);
       if (result.status === 'found') {
-        addItem({ barcode, name: result.name, brand: result.brand, source: result.source });
-        setToastData({ status: 'found', name: result.name });
+        const name = override ?? result.name;
+        addItem({ barcode, name, brand: result.brand, source: result.source });
+        setToastData({ status: 'found', name });
       } else if (result.status === 'not_found') {
-        addItem({ barcode, name: `Producto desconocido (${barcode})` });
+        const name = override ?? `Producto desconocido (${barcode})`;
+        addItem({ barcode, name });
         setToastData({ status: 'not_found', barcode });
       } else {
-        // error: do not add item to list
         setToastData({ status: 'error' });
       }
     });
-    return () => { cancelled = true; };
+
+    return () => { setScanningBarcode(null); };
   }, [lastScan]); // eslint-disable-line react-hooks/exhaustive-deps -- only re-run on new scan event; service fns are stable singletons
+
+  const handleClear = useCallback(() => {
+    genRef.current++; // invalidate any in-flight lookups
+    setScanningBarcode(null);
+    clearItems();
+  }, [clearItems]);
 
   return (
     <Box sx={styles.root}>
@@ -61,11 +76,15 @@ export function App() {
 
       <Container maxWidth="sm" disableGutters>
         <Paper elevation={0} square>
-          <ScannerView cameraError={cameraError} attachVideo={attachVideo} />
+          <ScannerView
+            cameraError={cameraError}
+            attachVideo={attachVideo}
+            scanningBarcode={scanningBarcode}
+          />
         </Paper>
 
         <Paper sx={{ mt: 1 }}>
-          <ProductList items={items} onClear={clearItems} />
+          <ProductList items={items} onClear={handleClear} onEditName={editItemName} />
           <Box sx={styles.exportBox}>
             <ExportButton items={items} />
           </Box>

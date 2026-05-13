@@ -9,7 +9,7 @@ vi.mock('./hooks/useScanner', () => ({
   useScanner: vi.fn(() => ({ lastScan: null, cameraError: null, attachVideo: vi.fn() })),
 }));
 vi.mock('./hooks/useProductList', () => ({
-  useProductList: vi.fn(() => ({ items: [], addItem: vi.fn(), clearItems: vi.fn() })),
+  useProductList: vi.fn(() => ({ items: [], addItem: vi.fn(), clearItems: vi.fn(), editItemName: vi.fn() })),
 }));
 vi.mock('./services/barcodeService', () => ({
   lookup: vi.fn(),
@@ -42,7 +42,7 @@ describe('App.tsx orchestration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseProductList.mockReturnValue({ items: [], addItem, clearItems: vi.fn() });
+    mockUseProductList.mockReturnValue({ items: [], addItem, clearItems: vi.fn(), editItemName: vi.fn() });
   });
 
   it('renders AppBar with title', () => {

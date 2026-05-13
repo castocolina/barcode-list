@@ -30,7 +30,7 @@ export function Toast({ data, onClose }: Props) {
       onClose={onClose}
       anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
     >
-      <Alert severity={severity} onClose={onClose} sx={{ width: '100%' }}>
+      <Alert severity={severity} onClose={onClose} onClick={onClose} sx={{ width: '100%', cursor: 'pointer' }}>
         {message}
       </Alert>
     </Snackbar>

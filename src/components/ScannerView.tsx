@@ -1,4 +1,4 @@
-import { Box, Alert } from '@mui/material';
+import { Box, Alert, Typography } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material';
 
 const styles: Record<string, SxProps<Theme>> = {
@@ -24,17 +24,23 @@ const styles: Record<string, SxProps<Theme>> = {
     maxWidth: 240,
     aspectRatio: '3 / 2',
     border: '2px solid',
-    borderColor: 'primary.light',
     borderRadius: 1,
     pointerEvents: 'none',
+    transition: 'border-color 0.15s',
   },
   hint: {
     position: 'absolute',
     bottom: 8,
     width: '100%',
     textAlign: 'center',
-    color: 'grey.500',
     fontSize: '0.7rem',
+    pointerEvents: 'none',
+  },
+  scanIndicator: {
+    position: 'absolute',
+    top: 8,
+    width: '100%',
+    textAlign: 'center',
     pointerEvents: 'none',
   },
   errorContainer: {
@@ -51,9 +57,10 @@ const styles: Record<string, SxProps<Theme>> = {
 interface Props {
   cameraError: string | null;
   attachVideo: (el: HTMLVideoElement | null) => void;
+  scanningBarcode?: string | null;
 }
 
-export function ScannerView({ cameraError, attachVideo }: Props) {
+export function ScannerView({ cameraError, attachVideo, scanningBarcode }: Props) {
   if (cameraError) {
     return (
       <Box sx={styles.errorContainer}>
@@ -73,8 +80,22 @@ export function ScannerView({ cameraError, attachVideo }: Props) {
         muted
         playsInline
       />
-      <Box sx={styles.viewfinder} />
-      <Box sx={styles.hint}>Apuntá el código entre 10–30 cm</Box>
+      <Box
+        sx={{
+          ...styles.viewfinder,
+          borderColor: scanningBarcode ? 'success.main' : 'primary.light',
+        }}
+      />
+      {scanningBarcode ? (
+        <Box sx={styles.scanIndicator}>
+          <Typography variant="caption" sx={{ color: 'success.light', fontWeight: 600, textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
+            ● Buscando {scanningBarcode}
+          </Typography>
+        </Box>
+      ) : null}
+      <Box sx={{ ...styles.hint, color: scanningBarcode ? 'transparent' : 'grey.500' }}>
+        Apuntá el código entre 10–30 cm
+      </Box>
     </Box>
   );
 }
