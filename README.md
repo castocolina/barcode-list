@@ -1,73 +1,121 @@
-# React + TypeScript + Vite
+# BarcodeList
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Mobile-first barcode scanner PWA — scan grocery products with your iPhone camera and keep a running list.
 
-Currently, two official plugins are available:
+**Live app:** https://castocolina.github.io/barcode-list/
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Screenshot
 
-## React Compiler
+<img src="docs/screenshot-mobile.png" alt="BarcodeList on mobile" width="320">
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## What This Does
 
-## Expanding the ESLint configuration
+Point your phone camera at any product barcode (EAN-13, UPC-A, QR, etc.) and the app looks up the product name from three free APIs in parallel. Each scan adds the item to a persistent list with a beep confirmation. Scan the same barcode twice and it increments the quantity instead of adding a duplicate. Share the final list as a CSV to Google Drive, Files, WhatsApp, or any app via the native iOS share sheet.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Features
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Rear camera with continuous autofocus, optimized for 10–30 cm scanning distance
+- Parallel product lookup from Open Food Facts, UPC Item DB, and Open EAN DB — first valid result wins, others are cancelled
+- Per-barcode 3-second deduplication cooldown (prevents double-scans from hand tremor)
+- Beep on scan (Web Audio API — no audio files)
+- Toast notifications: green for found, orange for unknown, red for API error
+- Quantity accumulation: scanning the same barcode again shows `×2`, `×3`, etc.
+- List persists in `localStorage` with a 7-day rolling expiry (resets on each scan)
+- Export to CSV via native OS share sheet (or direct download fallback on unsupported browsers)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## How It Works
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```mermaid
+sequenceDiagram
+    actor User
+    participant ZXing as Camera/ZXing
+    participant App as App.tsx
+    participant Sound as soundService
+    participant BS as barcodeService
+    participant OFF as Open Food Facts
+    participant UPC as UPC Item DB
+    participant EAN as Open EAN DB
+    participant Store as useProductList
+    participant Toast
+
+    User->>ZXing: Point camera at barcode
+
+    loop Continuous frame scan
+        ZXing->>ZXing: Decode frame
+        alt Same barcode within 3 s
+            ZXing->>ZXing: Skip — duplicate
+        else Cooldown elapsed
+            ZXing->>App: ScanEvent barcode + scanId
+        end
+    end
+
+    App->>Sound: beep()
+    Note right of Sound: fires before async lookup
+
+    App->>BS: lookup(barcode)
+
+    par Parallel fetch
+        BS->>OFF: GET barcode
+    and
+        BS->>UPC: GET barcode
+    and
+        BS->>EAN: GET barcode
+    end
+
+    Note over OFF,EAN: raceToSuccess — first valid name wins, others aborted via AbortController
+
+    alt found
+        BS-->>App: found — name, brand, source
+        App->>Store: addItem(name, brand, source)
+        Store->>Store: persist to localStorage
+        App->>Toast: green — product name
+    else not_found
+        BS-->>App: not_found
+        App->>Store: addItem - Producto desconocido
+        Store->>Store: persist to localStorage
+        App->>Toast: orange — sin descripcion
+    else error
+        BS-->>App: error
+        App->>Toast: red — Error al buscar
+    end
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Tech Stack
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- **Framework**: React 18 + Vite + TypeScript
+- **UI**: MUI v7 (Material Design)
+- **Barcode scanning**: `@zxing/library`
+- **Persistence**: `localStorage`
+- **Export**: Web Share API
+- **Hosting**: GitHub Pages via GitHub Actions
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Getting Started
+
+```bash
+npm install
+npm run dev
 ```
+
+Open `http://localhost:5173/barcode-list/` in a browser.
+
+> **Note:** Camera access requires HTTPS. On `localhost` a camera error is expected — the list, export, and clear dialog are fully functional. Test camera scanning from the deployed URL.
+
+```bash
+npm test -- --run   # run all tests (40 tests)
+npm run build       # production build → dist/
+```
+
+## Deploying
+
+1. Push the repo to GitHub as `barcode-list`
+2. Go to **Settings → Pages → Source** and select the `gh-pages` branch, root `/`
+3. Push any commit to `main` — GitHub Actions builds and deploys automatically
+
+The workflow runs all 40 tests before every deploy (`.github/workflows/deploy.yml`).
+
+## Known Limitations
+
+- **HTTPS required** — camera access is blocked on `http://` (except localhost)
+- **UPC Item DB** — 100 free lookups/day; the other two APIs continue working if the limit is hit
+- **iOS focus** — no browser on iOS exposes manual camera focus via WebAPI; continuous autofocus works well in practice at 10–30 cm
+- **localStorage is per device/browser** — the list does not sync across devices
