@@ -5,6 +5,9 @@ export default defineConfig({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   plugins: [react() as any],
   base: '/barcode-list/',
+  define: {
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   test: {
     globals: true,
     environment: 'jsdom',

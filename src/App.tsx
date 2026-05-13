@@ -12,19 +12,36 @@ import { beep } from './services/soundService';
 import { getOverride } from './services/descriptionCache';
 import type { ToastData } from './types';
 
+const BUILD_LABEL = (() => {
+  try {
+    const d = new Date(__BUILD_TIME__);
+    return `v${d.toISOString().slice(0, 10).replace(/-/g, '')}.${String(d.getUTCHours()).padStart(2, '0')}${String(d.getUTCMinutes()).padStart(2, '0')}`;
+  } catch { return ''; }
+})();
+
 const styles: Record<string, SxProps<Theme>> = {
   root: { minHeight: '100vh', bgcolor: 'background.default', pb: 2 },
   itemCount: { opacity: 0.8 },
+  buildLabel: { opacity: 0.45, ml: 1, fontSize: '0.6rem', letterSpacing: 0.3 },
   exportBox: { px: 2, pb: 2 },
 };
 
 export function App() {
   const { lastScan, cameraError, attachVideo, zoomLevel, zoomRange, setZoom } = useScanner();
-  const { items, addItem, clearItems, editItemName } = useProductList();
+  const { items, addItem, clearItems, editItemName, adjustQuantity } = useProductList();
   const [toastData, setToastData] = useState<ToastData | null>(null);
   const [scanningBarcode, setScanningBarcode] = useState<string | null>(null);
+  const [audioReady, setAudioReady] = useState(false);
   // Generation counter: incremented on clear so in-flight lookups discard their results
   const genRef = useRef(0);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    function onFirstGesture() { setAudioReady(true); ac.abort(); }
+    document.addEventListener('touchstart', onFirstGesture, { signal: ac.signal, passive: true });
+    document.addEventListener('click', onFirstGesture, { signal: ac.signal, passive: true });
+    return () => ac.abort();
+  }, []);
 
   useEffect(() => {
     if (!lastScan) return;
@@ -71,6 +88,9 @@ export function App() {
           <Typography variant="caption" sx={styles.itemCount}>
             {items.length} {items.length === 1 ? 'item' : 'items'}
           </Typography>
+          {BUILD_LABEL ? (
+            <Typography variant="caption" sx={styles.buildLabel}>{BUILD_LABEL}</Typography>
+          ) : null}
         </Toolbar>
       </AppBar>
 
@@ -83,11 +103,12 @@ export function App() {
             zoomLevel={zoomLevel}
             zoomRange={zoomRange}
             setZoom={setZoom}
+            audioReady={audioReady}
           />
         </Paper>
 
         <Paper sx={{ mt: 1 }}>
-          <ProductList items={items} onClear={handleClear} onEditName={editItemName} />
+          <ProductList items={items} onClear={handleClear} onEditName={editItemName} onAdjustQuantity={adjustQuantity} />
           <Box sx={styles.exportBox}>
             <ExportButton items={items} />
           </Box>

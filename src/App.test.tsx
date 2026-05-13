@@ -6,10 +6,17 @@ import type { ScanResult } from './types';
 
 // Mock hooks and services so no camera or network access occurs
 vi.mock('./hooks/useScanner', () => ({
-  useScanner: vi.fn(() => ({ lastScan: null, cameraError: null, attachVideo: vi.fn() })),
+  useScanner: vi.fn(() => ({
+    lastScan: null,
+    cameraError: null,
+    attachVideo: vi.fn(),
+    zoomLevel: 1,
+    zoomRange: null,
+    setZoom: vi.fn(),
+  })),
 }));
 vi.mock('./hooks/useProductList', () => ({
-  useProductList: vi.fn(() => ({ items: [], addItem: vi.fn(), clearItems: vi.fn(), editItemName: vi.fn() })),
+  useProductList: vi.fn(() => ({ items: [], addItem: vi.fn(), clearItems: vi.fn(), editItemName: vi.fn(), adjustQuantity: vi.fn() })),
 }));
 vi.mock('./services/barcodeService', () => ({
   lookup: vi.fn(),
@@ -42,11 +49,11 @@ describe('App.tsx orchestration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseProductList.mockReturnValue({ items: [], addItem, clearItems: vi.fn(), editItemName: vi.fn() });
+    mockUseProductList.mockReturnValue({ items: [], addItem, clearItems: vi.fn(), editItemName: vi.fn(), adjustQuantity: vi.fn() });
   });
 
   it('renders AppBar with title', () => {
-    mockUseScanner.mockReturnValue({ lastScan: null, cameraError: null, attachVideo: vi.fn() });
+    mockUseScanner.mockReturnValue({ lastScan: null, cameraError: null, attachVideo: vi.fn(), zoomLevel: 1, zoomRange: null, setZoom: vi.fn() });
     renderApp();
     expect(screen.getByText('BarcodeList')).toBeInTheDocument();
   });
@@ -54,7 +61,7 @@ describe('App.tsx orchestration', () => {
   it('calls beep before lookup resolves, then addItem on found result', async () => {
     let resolveLookup!: (value: ScanResult | PromiseLike<ScanResult>) => void;
     mockLookup.mockReturnValue(new Promise((res) => { resolveLookup = res; }));
-    mockUseScanner.mockReturnValue({ lastScan: { barcode: '12345', scanId: 1 }, cameraError: null, attachVideo: vi.fn() });
+    mockUseScanner.mockReturnValue({ lastScan: { barcode: '12345', scanId: 1 }, cameraError: null, attachVideo: vi.fn(), zoomLevel: 1, zoomRange: null, setZoom: vi.fn() });
 
     renderApp();
 
@@ -70,7 +77,7 @@ describe('App.tsx orchestration', () => {
 
   it('calls addItem with fallback name on not_found result', async () => {
     mockLookup.mockResolvedValue({ status: 'not_found' });
-    mockUseScanner.mockReturnValue({ lastScan: { barcode: '99999', scanId: 2 }, cameraError: null, attachVideo: vi.fn() });
+    mockUseScanner.mockReturnValue({ lastScan: { barcode: '99999', scanId: 2 }, cameraError: null, attachVideo: vi.fn(), zoomLevel: 1, zoomRange: null, setZoom: vi.fn() });
 
     renderApp();
 
@@ -81,7 +88,7 @@ describe('App.tsx orchestration', () => {
 
   it('does NOT call addItem on error result', async () => {
     mockLookup.mockResolvedValue({ status: 'error', message: 'timeout' });
-    mockUseScanner.mockReturnValue({ lastScan: { barcode: '11111', scanId: 3 }, cameraError: null, attachVideo: vi.fn() });
+    mockUseScanner.mockReturnValue({ lastScan: { barcode: '11111', scanId: 3 }, cameraError: null, attachVideo: vi.fn(), zoomLevel: 1, zoomRange: null, setZoom: vi.fn() });
 
     renderApp();
 

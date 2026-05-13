@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import {
-  List, ListItem, ListItemText, Chip, Box, Button, Typography,
+  List, ListItem, ListItemText, Box, Button, Typography,
   IconButton, TextField,
 } from '@mui/material';
 import {
   Edit as EditIcon,
   Check as CheckIcon,
   Close as CloseIcon,
+  Add as AddIcon,
+  Remove as RemoveIcon,
 } from '@mui/icons-material';
 import type { SxProps, Theme } from '@mui/material';
 import { ClearDialog } from './ClearDialog';
@@ -39,8 +41,15 @@ const styles: Record<string, SxProps<Theme>> = {
   },
   secondaryActions: {
     display: 'flex',
-    gap: 0.5,
+    gap: 0.25,
     alignItems: 'center',
+  },
+  qtyLabel: {
+    minWidth: 20,
+    textAlign: 'center',
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    color: 'text.primary',
   },
   editActions: {
     display: 'flex',
@@ -52,9 +61,10 @@ interface Props {
   items: ScanItem[];
   onClear: () => void;
   onEditName: (barcode: string, name: string) => void;
+  onAdjustQuantity: (barcode: string, delta: number) => void;
 }
 
-export function ProductList({ items, onClear, onEditName }: Props) {
+export function ProductList({ items, onClear, onEditName, onAdjustQuantity }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBarcode, setEditingBarcode] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -120,12 +130,18 @@ export function ProductList({ items, onClear, onEditName }: Props) {
                       <IconButton size="small" onClick={() => startEdit(item)} sx={{ opacity: 0.45 }} aria-label="editar">
                         <EditIcon fontSize="small" />
                       </IconButton>
-                      <Chip
-                        label={`×${item.quantity}`}
+                      <IconButton
                         size="small"
-                        color="primary"
-                        variant="outlined"
-                      />
+                        onClick={() => onAdjustQuantity(item.barcode, -1)}
+                        aria-label="restar"
+                        color={item.quantity === 1 ? 'error' : 'default'}
+                      >
+                        <RemoveIcon fontSize="small" />
+                      </IconButton>
+                      <Typography sx={styles.qtyLabel}>{item.quantity}</Typography>
+                      <IconButton size="small" onClick={() => onAdjustQuantity(item.barcode, 1)} aria-label="sumar">
+                        <AddIcon fontSize="small" />
+                      </IconButton>
                     </Box>
                   )
                 }

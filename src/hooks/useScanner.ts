@@ -11,8 +11,6 @@ interface ExtendedConstraintSet extends MediaTrackConstraintSet {
 }
 
 const ZOOM_KEY = 'bl_zoom';
-// User-visible step per button press; respects native step if coarser
-const BUTTON_STEP = 0.5;
 
 export function useScanner() {
   const [lastScan, setLastScan] = useState<ScanEvent | null>(null);

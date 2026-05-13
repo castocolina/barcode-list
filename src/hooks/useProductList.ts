@@ -55,5 +55,17 @@ export function useProductList() {
     setOverride(barcode, name);
   }, []);
 
-  return { items, addItem, clearItems, editItemName };
+  const adjustQuantity = useCallback((barcode: string, delta: number) => {
+    setItems((prev) => {
+      const item = prev.find((i) => i.barcode === barcode);
+      if (!item) return prev;
+      const next = item.quantity + delta <= 0
+        ? prev.filter((i) => i.barcode !== barcode)
+        : prev.map((i) => i.barcode === barcode ? { ...i, quantity: i.quantity + delta } : i);
+      storageService.writeItems(next);
+      return next;
+    });
+  }, []);
+
+  return { items, addItem, clearItems, editItemName, adjustQuantity };
 }
