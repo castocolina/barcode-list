@@ -32,6 +32,15 @@ const styles: Record<string, SxProps<Theme>> = {
   },
   scanIndicator: {
     position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    textAlign: 'center',
+    pointerEvents: 'none',
+    bgcolor: 'rgba(0,0,0,0.65)',
+    py: 0.5,
+  },
+  audioHint: {
+    position: 'absolute',
     top: 8,
     width: '100%',
     textAlign: 'center',
@@ -39,7 +48,7 @@ const styles: Record<string, SxProps<Theme>> = {
   },
   zoomControls: {
     position: 'absolute',
-    bottom: 8,
+    bottom: 32,
     left: '50%',
     transform: 'translateX(-50%)',
     display: 'flex',
@@ -90,6 +99,7 @@ interface Props {
   zoomLevel?: number;
   zoomRange?: ZoomRange | null;
   setZoom?: (value: number) => void;
+  audioReady?: boolean;
 }
 
 export function ScannerView({
@@ -99,6 +109,7 @@ export function ScannerView({
   zoomLevel = 1,
   zoomRange,
   setZoom,
+  audioReady = true,
 }: Props) {
   if (cameraError) {
     return (
@@ -141,11 +152,22 @@ export function ScannerView({
         }}
       />
 
+      {!audioReady ? (
+        <Box sx={styles.audioHint}>
+          <Typography
+            variant="caption"
+            sx={{ color: 'warning.light', fontWeight: 600, textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}
+          >
+            🔇 Tocá para activar sonido
+          </Typography>
+        </Box>
+      ) : null}
+
       {scanningBarcode ? (
         <Box sx={styles.scanIndicator}>
           <Typography
             variant="caption"
-            sx={{ color: 'success.light', fontWeight: 600, textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
+            sx={{ color: 'success.light', fontWeight: 600 }}
           >
             ● Buscando {scanningBarcode}
           </Typography>

@@ -1,0 +1,52 @@
+sequenceDiagram
+    actor User
+    participant ZXing as Camera/ZXing
+    participant App as App.tsx
+    participant Sound as soundService
+    participant BS as barcodeService
+    participant OFFood as Open Food Facts
+    participant UPC as UPC Item DB
+    participant EAN as Open EAN DB
+    participant Store as useProductList
+    participant Toast
+
+    User->>ZXing: Point camera at barcode
+
+    loop Continuous frame scan
+        ZXing->>ZXing: Decode frame
+        alt Same barcode within 3 s
+            ZXing->>ZXing: Skip — duplicate
+        else Cooldown elapsed
+            ZXing->>App: ScanEvent barcode + scanId
+        end
+    end
+
+    App->>Sound: beep()
+    Note right of Sound: fires before async lookup
+
+    App->>BS: lookup(barcode)
+
+    par Parallel fetch
+        BS->>OFFood: GET barcode
+    and
+        BS->>UPC: GET barcode
+    and
+        BS->>EAN: GET barcode
+    end
+
+    Note over OFFood,EAN: raceToSuccess — first valid name wins, others aborted via AbortController
+
+    alt found
+        BS-->>App: found — name, brand, source
+        App->>Store: addItem(name, brand, source)
+        Store->>Store: persist to localStorage
+        App->>Toast: green — product name
+    else not_found
+        BS-->>App: not_found
+        App->>Store: addItem - Producto desconocido
+        Store->>Store: persist to localStorage
+        App->>Toast: orange — sin descripcion
+    else error
+        BS-->>App: error
+        App->>Toast: red — Error al buscar
+    end

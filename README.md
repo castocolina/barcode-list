@@ -32,7 +32,7 @@ sequenceDiagram
     participant App as App.tsx
     participant Sound as soundService
     participant BS as barcodeService
-    participant OFF as Open Food Facts
+    participant OFFood as Open Food Facts
     participant UPC as UPC Item DB
     participant EAN as Open EAN DB
     participant Store as useProductList
@@ -55,14 +55,14 @@ sequenceDiagram
     App->>BS: lookup(barcode)
 
     par Parallel fetch
-        BS->>OFF: GET barcode
+        BS->>OFFood: GET barcode
     and
         BS->>UPC: GET barcode
     and
         BS->>EAN: GET barcode
     end
 
-    Note over OFF,EAN: raceToSuccess — first valid name wins, others aborted via AbortController
+    Note over OFFood,EAN: raceToSuccess — first valid name wins, others aborted via AbortController
 
     alt found
         BS-->>App: found — name, brand, source
@@ -92,8 +92,8 @@ sequenceDiagram
 ## Getting Started
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 Open `http://localhost:5173/barcode-list/` in a browser.
@@ -101,8 +101,8 @@ Open `http://localhost:5173/barcode-list/` in a browser.
 > **Note:** Camera access requires HTTPS. On `localhost` a camera error is expected — the list, export, and clear dialog are fully functional. Test camera scanning from the deployed URL.
 
 ```bash
-npm test -- --run   # run all tests (40 tests)
-npm run build       # production build → dist/
+pnpm test -- --run   # run all tests (40 tests)
+pnpm build           # production build → dist/
 ```
 
 ## Deploying
